@@ -1,13 +1,21 @@
-from django.shortcuts import render
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .serializers import RegistrationLoginSerializer
-from django.contrib.auth.models import User
-from rest_framework_simplejwt.tokens import AccessToken
+from rest_framework_simplejwt.tokens import RefreshToken
 
 
 class ApiRegisterLoginView(APIView):
+    """
+    API endpoint for user registration and login.
+
+    - If user exists and credentials are valid — logs in and returns tokens.
+    - If user does not exist — registers a new user and returns tokens.
+
+    Returns:
+        - HTTP 200 with tokens on successful login.
+        - HTTP 201 with tokens on successful registration.
+    """
     def post(self, request):
         serializer = RegistrationLoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -15,24 +23,17 @@ class ApiRegisterLoginView(APIView):
 
         if 'user' in validated_data:
             user = validated_data['user']
-            token = self.get_tokens_for_user(user)
-
-            return Response({
-                "message": "Logged in successfully",
-                "username": user.username,
-                "access": token['access'],
-            }, status=status.HTTP_200_OK)
+            status_code = status.HTTP_200_OK
         else:
             user = serializer.save()
-            token = self.get_tokens_for_user(user)
+            status_code = status.HTTP_201_CREATED
 
-            return Response({
-                "message": "User registered successfully",
-                "username": user.username,
-                "access": token['access'],
-            }, status=status.HTTP_201_CREATED)
+        tokens = self.get_tokens_for_user(user)
+        return Response(tokens, status=status_code)
 
     def get_tokens_for_user(self, user):
-        access_token = AccessToken.for_user(user)
-        return {"access": str(access_token)}
-
+        refresh = RefreshToken.for_user(user)
+        return {
+            "refresh": str(refresh),
+            "access": str(refresh.access_token)
+        }
