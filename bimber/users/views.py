@@ -1,39 +1,38 @@
-from rest_framework import status
-from rest_framework.views import APIView
+from rest_framework import generics
 from rest_framework.response import Response
-from .serializers import RegistrationLoginSerializer
+from .serializers import AuthorizationSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 
 
-class ApiRegisterLoginView(APIView):
+class ApiAuthorizationView(generics.CreateAPIView):
     """
-    API endpoint for user registration and login.
+    API view for user authorization.
 
-    - If user exists and credentials are valid — logs in and returns tokens.
-    - If user does not exist — registers a new user and returns tokens.
+    Processes POST requests with 'username' and 'password'.
+    Returns JWT access and refresh tokens for the authenticated user.
 
-    Returns:
-        - HTTP 200 with tokens on successful login.
-        - HTTP 201 with tokens on successful registration.
+    :param request: HTTP request with 'username' and 'password'.
+    :return: JSON response containing 'access_token' and 'refresh_token'.
     """
-    def post(self, request):
-        serializer = RegistrationLoginSerializer(data=request.data)
+    serializer_class = AuthorizationSerializer
+
+    def create(self, request, *args, **kwargs):
+        """
+        Create JWT tokens for the authorized user.
+
+        :param request: HTTP request.
+        :param args: Additional positional arguments.
+        :param kwargs: Additional keyword arguments.
+        :return: Response object with access and refresh tokens.
+        """
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        validated_data = serializer.validated_data
+        user = serializer.save()
 
-        if 'user' in validated_data:
-            user = validated_data['user']
-            status_code = status.HTTP_200_OK
-        else:
-            user = serializer.save()
-            status_code = status.HTTP_201_CREATED
-
-        tokens = self.get_tokens_for_user(user)
-        return Response(tokens, status=status_code)
-
-    def get_tokens_for_user(self, user):
         refresh = RefreshToken.for_user(user)
-        return {
-            "refresh": str(refresh),
-            "access": str(refresh.access_token)
-        }
+        access_token = refresh.access_token
+
+        return Response({
+            'access:': str(access_token),
+            'refresh:': str(refresh)
+        })
