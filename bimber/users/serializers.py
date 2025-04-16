@@ -1,5 +1,5 @@
 from django.contrib.auth import get_user_model
-from rest_framework import serializers
+from rest_framework import serializers, status
 
 User = get_user_model()
 
@@ -28,7 +28,7 @@ class AuthorizationSerializer(serializers.ModelSerializer):
         Validate user credentials.
 
         :param attrs: Dictionary containing 'username' and 'password'.
-        :return: Modified attrs with 'user' key containing the user instance.
+        :return: Modified attrs with 'user' key containing the user instance and 'created' key.
         :raise: serializers.ValidationError if credentials are incorrect.
         """
         username = attrs['username']
@@ -42,6 +42,7 @@ class AuthorizationSerializer(serializers.ModelSerializer):
             if not user.check_password(password):
                 raise serializers.ValidationError("Username or password is incorrect")
         attrs['user'] = user
+        attrs['created'] = created
         return attrs
 
     def create(self, validated_data):
@@ -51,4 +52,4 @@ class AuthorizationSerializer(serializers.ModelSerializer):
         :param validated_data: Dictionary with validated data containing 'user'.
         :return: User instance.
         """
-        return validated_data['user']
+        return validated_data["user"]
