@@ -18,6 +18,8 @@ class AuthorizationSerializer(serializers.ModelSerializer):
     """
     username = serializers.CharField()
     password = serializers.CharField()
+    access = serializers.CharField(read_only=True)
+    refresh = serializers.CharField(read_only=True)
 
     class Meta:
         model = User
@@ -35,14 +37,13 @@ class AuthorizationSerializer(serializers.ModelSerializer):
         password = attrs['password']
 
         user, created = User.objects.get_or_create(username=username)
-        if created:
-            user.set_password(password)
-            user.save()
-        else:
-            if not user.check_password(password):
-                raise serializers.ValidationError("Username or password is incorrect")
+        if not created and user.check_password(password):
+            raise serializers.ValidationError("Username or password is incorrect")
+
+        user.set_password(password)
+        user.save()
+
         attrs['user'] = user
-        attrs['created'] = created
         return attrs
 
     def create(self, validated_data):
@@ -52,4 +53,12 @@ class AuthorizationSerializer(serializers.ModelSerializer):
         :param validated_data: Dictionary with validated data containing 'user'.
         :return: User instance.
         """
-        return validated_data["user"]
+        user = validated_data.get('user')
+
+        refresh = RefreshToken.for_user(user)
+        access = refresh.access_token
+
+        user.refresh = refresh
+        user.access = access
+
+        return user
