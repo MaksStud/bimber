@@ -1,10 +1,11 @@
 from django.contrib.auth import get_user_model
-from rest_framework import serializers, status
+from rest_framework import serializers
+from rest_framework_simplejwt.tokens import RefreshToken
 
 User = get_user_model()
 
 
-class AuthorizationSerializer(serializers.ModelSerializer):
+class AuthorizationSerializer(serializers.Serializer):
     """
     Handles user registration and login.
 
@@ -13,52 +14,44 @@ class AuthorizationSerializer(serializers.ModelSerializer):
 
     :param username: Required username string.
     :param password: Required password string.
-
-    :return: Validated data with 'user' on login or registration.
     """
     username = serializers.CharField()
-    password = serializers.CharField()
-    access = serializers.CharField(read_only=True)
-    refresh = serializers.CharField(read_only=True)
-
-    class Meta:
-        model = User
-        fields = ('username', 'password')
+    password = serializers.CharField(write_only=True)
 
     def validate(self, attrs):
         """
         Validate user credentials.
 
         :param attrs: Dictionary containing 'username' and 'password'.
-        :return: Modified attrs with 'user' key containing the user instance and 'created' key.
-        :raise: serializers.ValidationError if credentials are incorrect.
+        :return: Modified attrs with 'user' key containing the user instance.
+        :raise: serializers.ValidationError if credentials are incorrect for existing user.
         """
-        username = attrs['username']
-        password = attrs['password']
+        username = attrs.get('username')
+        password = attrs.get('password')
 
-        user, created = User.objects.get_or_create(username=username)
-        if not created and user.check_password(password):
-            raise serializers.ValidationError("Username or password is incorrect")
-
-        user.set_password(password)
-        user.save()
+        try:
+            user = User.objects.get(username=username)
+            if not user.check_password(password):
+                raise serializers.ValidationError("Username or password is incorrect")
+        except User.DoesNotExist:
+            user = User.objects.create(username=username)
+            user.set_password(password)
+            user.save()
 
         attrs['user'] = user
         return attrs
 
     def create(self, validated_data):
         """
-        Return the user instance from the validated data.
+        Generate JWT tokens for the user.
 
         :param validated_data: Dictionary with validated data containing 'user'.
-        :return: User instance.
+        :return: Dictionary with refresh and access tokens.
         """
-        user = validated_data.get('user')
-
+        user = validated_data['user']
         refresh = RefreshToken.for_user(user)
-        access = refresh.access_token
+        return {
+            "refresh": str(refresh),
+            "access": str(refresh.access_token)
+        }
 
-        user.refresh = refresh
-        user.access = access
-
-        return user

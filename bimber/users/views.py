@@ -4,26 +4,23 @@ from .serializers import AuthorizationSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 
 
-class AuthorizationView(generics.CreateAPIView):
+class AuthorizationView(generics.GenericAPIView):
     """
     API view for user authorization.
     """
     serializer_class = AuthorizationSerializer
 
-    def create(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
         """
-        Create JWT tokens for the authorized user.
+        Handle POST requests to authorize a user.
 
-        :param request: HTTP request.
+        :param request: HTTP request containing 'username' and 'password'.
         :param args: Additional positional arguments.
         :param kwargs: Additional keyword arguments.
-        :return: Response object with access and refresh tokens.
+        :return: Response with access and refresh tokens.
         """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user = serializer.save()
-        
-        return Response({
-            'access:': str(user.refresh),
-            'refresh:': str(user.access)
-        }, status=status.HTTP_200_OK)
+        tokens = serializer.save()
+        return Response(tokens, status=status.HTTP_200_OK)
+
