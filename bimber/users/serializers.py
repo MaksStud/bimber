@@ -23,7 +23,7 @@ class AuthorizationSerializer(serializers.Serializer):
         Validate user credentials.
 
         :param attrs: Dictionary containing 'username' and 'password'.
-        :return: Modified attrs with tokens.
+        :return: Modified attrs with 'user'.
         :raise: serializers.ValidationError if credentials are incorrect for existing user.
         """
         username = attrs.get('username')
@@ -37,22 +37,22 @@ class AuthorizationSerializer(serializers.Serializer):
             if not user.check_password(password):
                 raise serializers.ValidationError("Invalid credentials")
 
-        refresh = RefreshToken.for_user(user)
-        access = refresh.access_token
-
-        attrs['refresh'] = str(refresh)
-        attrs['access'] = str(access)
+        attrs['user'] = user
         return attrs
 
     def create(self, validated_data):
         """
         Generate JWT tokens for the user.
 
-        :param validated_data: Dictionary with validated data containing 'access' and 'refresh'.
+        :param validated_data: Dictionary with validated data containing 'user'.
         :return: Dictionary with refresh and access tokens.
         """
-        return {
-            'refresh': validated_data.get('refresh'),
-            'access': validated_data.get('access')
-        }
+        user = validated_data.pop('user')
 
+        refresh = RefreshToken.for_user(user)
+        access = refresh.access_token
+
+        return {
+            'refresh': str(refresh),
+            'access': str(access),
+        }
