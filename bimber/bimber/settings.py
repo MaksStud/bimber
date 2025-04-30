@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from pathlib import Path
 from enum import IntEnum
+from datetime import timedelta
+
 import os
 
 
@@ -40,6 +42,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    'rest_framework_simplejwt',
+
+    'channels',
+    'users',
 ]
 
 MIDDLEWARE = [
@@ -71,6 +78,8 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'bimber.wsgi.application'
+ASGI_APPLICATION = 'bimber.asgi.application'
+
 
 
 # Database
@@ -206,3 +215,7 @@ TEMPLATES = [
     },
 ]
 
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=30),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=365)
+}
